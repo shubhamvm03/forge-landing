@@ -1,5 +1,5 @@
 // components/Hero.jsx
-import React, { Suspense, useRef, useEffect, useState } from 'react'
+import React, { Suspense, useRef, useEffect, useState, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, useGLTF, Environment, useProgress, Html } from '@react-three/drei'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader'
@@ -51,22 +51,22 @@ const Loader = () => {
   )
 }
 
-// Enhanced Model Component
+// Enhanced Model Component (FIXED - no infinite re-renders)
 const Model3D = () => {
   const meshRef = useRef()
-  const [modelError, setModelError] = useState(false)
   const [exrTexture, setExrTexture] = useState(null)
 
-  // Try to load GLB model with error handling
-  let gltf
-  try {
-    gltf = useGLTF('/models/landing_page_motor.glb')
-  } catch (error) {
-    console.log('GLB Model failed to load:', error)
-    setModelError(true)
-  }
+  // Memoized GLB loading to prevent re-renders
+  const gltf = useMemo(() => {
+    try {
+      return useGLTF('/models/landing_page_motor.glb')
+    } catch (error) {
+      console.log('GLB Model failed to load:', error)
+      return null
+    }
+  }, [])
 
-  // Load EXR texture
+  // Load EXR texture only once
   useEffect(() => {
     const loader = new EXRLoader()
     loader.load(
@@ -81,7 +81,7 @@ const Model3D = () => {
         console.log('EXR texture failed to load:', error)
       }
     )
-  }, [])
+  }, []) // Empty dependency array - runs only once
 
   useFrame(() => {
     if (meshRef.current) {
@@ -89,7 +89,7 @@ const Model3D = () => {
     }
   })
 
-  // Apply EXR texture to materials
+  // Apply EXR texture to materials (with proper dependencies)
   useEffect(() => {
     if (exrTexture && gltf?.materials) {
       Object.values(gltf.materials).forEach((material) => {
@@ -101,14 +101,14 @@ const Model3D = () => {
         }
       })
     }
-  }, [exrTexture, gltf])
+  }, [exrTexture, gltf?.materials]) // Proper dependencies
 
   // If GLB model loaded successfully
-  if (gltf?.scene && !modelError) {
+  if (gltf?.scene) {
     return (
       <primitive 
         ref={meshRef} 
-        object={gltf.scene} 
+        object={gltf.scene.clone()} // Clone to prevent shared reference issues
         scale={[1.5, 1.5, 1.5]} 
         position={[0, 0, 0]} 
       />
@@ -150,19 +150,20 @@ const Model3D = () => {
 }
 
 const Hero = () => {
-  const services = [
+  // Memoize static data to prevent re-creation
+  const services = useMemo(() => [
     { number: '01.', service: 'Custom Brackets', icon: '⚡' },
     { number: '02.', service: 'Steel Adapters', icon: '⚙️' },
     { number: '03.', service: 'Motor Mounts', icon: '🔧' },
     { number: '04.', service: 'Enclosures', icon: '📦' }
-  ]
+  ], [])
 
-  // Fixed working image URLs for CNC parts
-  const partImages = [
-   {
-    src: "https://picsum.photos/120/120?random=101",
-    alt: "CNC Part 1"
-  },
+  // Fixed image URLs with unique parts
+  const partImages = useMemo(() => [
+    {
+      src: "https://picsum.photos/120/120?random=201",
+      alt: "CNC Part 1"
+    },
     {
       src: "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=100&q=80", 
       alt: "CNC Part 2"
@@ -171,7 +172,7 @@ const Hero = () => {
       src: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=100&q=80",
       alt: "CNC Part 3"
     }
-  ]
+  ], [])
 
   return (
     <section className="hero">
@@ -262,6 +263,13 @@ const Hero = () => {
       </div>
     </section>
   )
+}
+
+// Preload the model outside the component to prevent re-loading
+try {
+  useGLTF.preload('/models/landing_page_motor.glb')
+} catch (error) {
+  console.log('Model preload failed:', error)
 }
 
 export default Hero
