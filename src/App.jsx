@@ -1,9 +1,9 @@
 import React from 'react'
-import Header from './components/Header'
-import Hero from './components/Hero'
-import VideoSection from './components/VideoSection'
-import ProductSection from './components/ProductSection'
-import Footer from './components/Footer'
+import Header from './components/Header.tsx'
+import Hero from './components/Hero.tsx'
+import VideoSection from './components/VideoSection.tsx'
+import ProductSection from './components/ProductSection.tsx'
+import Footer from './components/Footer.tsx'
 
 // Import global styles
 import './styles/global.css'

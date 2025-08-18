@@ -1,17 +1,43 @@
-// components/Hero.jsx
-import React, { Suspense, useRef, useEffect, useState, useMemo } from 'react'
+import React, { Suspense, useRef, useEffect, useState, useMemo, FC } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, useGLTF, Environment, useProgress, Html } from '@react-three/drei'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader'
 import * as THREE from 'three'
 import '../styles/hero.css'
 
-// Image with fallback handling
-const ImageWithFallback = ({ src, alt, className, fallbackSrc }) => {
-  const [imgSrc, setImgSrc] = useState(src)
-  const [hasError, setHasError] = useState(false)
+// Type definitions
+interface ImageWithFallbackProps {
+  src: string
+  alt: string
+  className?: string
+  fallbackSrc?: string
+}
 
-  const handleError = () => {
+interface ServiceItem {
+  number: string
+  service: string
+  icon: string
+}
+
+interface PartImage {
+  src: string
+  alt: string
+}
+
+interface CanvasErrorBoundaryState {
+  hasError: boolean
+}
+
+interface CanvasErrorBoundaryProps {
+  children: React.ReactNode
+}
+
+// Image with fallback handling
+const ImageWithFallback: FC<ImageWithFallbackProps> = ({ src, alt, className, fallbackSrc }) => {
+  const [imgSrc, setImgSrc] = useState<string>(src)
+  const [hasError, setHasError] = useState<boolean>(false)
+
+  const handleError = (): void => {
     if (!hasError) {
       setHasError(true)
       setImgSrc(fallbackSrc || `https://via.placeholder.com/100x100/667eea/white?text=${encodeURIComponent(alt)}`)
@@ -30,7 +56,7 @@ const ImageWithFallback = ({ src, alt, className, fallbackSrc }) => {
 }
 
 // Loading Screen Component
-const Loader = () => {
+const Loader: FC = () => {
   const { progress } = useProgress()
   return (
     <Html center>
@@ -51,12 +77,12 @@ const Loader = () => {
   )
 }
 
-// Enhanced Model Component with Error Boundary Fallback
-const Model3D = () => {
-  const meshRef = useRef()
-  const [exrTexture, setExrTexture] = useState(null)
+// Enhanced Model Component with proper typing
+const Model3D: FC = () => {
+  const meshRef = useRef<THREE.Group>(null!)
+  const [exrTexture, setExrTexture] = useState<THREE.Texture | null>(null)
   
-  // FIXED: Call useGLTF at top level - no try/catch around hooks
+  // GLTF loading with proper typing
   const gltf = useGLTF('/models/landing_page_motor.glb')
 
   // Load EXR texture
@@ -64,13 +90,13 @@ const Model3D = () => {
     const loader = new EXRLoader()
     loader.load(
       '/textures/metallic-texture.exr',
-      (texture) => {
+      (texture: THREE.DataTexture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping
         texture.flipY = false
         setExrTexture(texture)
       },
       undefined,
-      (error) => {
+      (error: unknown) => {
         console.log('EXR texture failed to load:', error)
       }
     )
@@ -85,8 +111,8 @@ const Model3D = () => {
   // Apply EXR texture to materials
   useEffect(() => {
     if (exrTexture && gltf?.materials) {
-      Object.values(gltf.materials).forEach((material) => {
-        if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
+      Object.values(gltf.materials).forEach((material: THREE.Material) => {
+        if (material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshPhysicalMaterial) {
           material.envMap = exrTexture
           material.metalness = 1.0
           material.roughness = 0.1
@@ -108,7 +134,7 @@ const Model3D = () => {
     )
   }
 
-  // Enhanced fallback - looks like industrial machinery
+  // Enhanced fallback - looks like scientific equipment
   return (
     <group ref={meshRef}>
       <mesh position={[0, 0, 0]}>
@@ -142,27 +168,27 @@ const Model3D = () => {
   )
 }
 
-// Error Boundary for Canvas
-class CanvasErrorBoundary extends React.Component {
-  constructor(props) {
+// Error Boundary for Canvas (Class Component with TypeScript)
+class CanvasErrorBoundary extends React.Component<CanvasErrorBoundaryProps, CanvasErrorBoundaryState> {
+  constructor(props: CanvasErrorBoundaryProps) {
     super(props)
     this.state = { hasError: false }
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(_: Error): CanvasErrorBoundaryState {
     return { hasError: true }
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     console.log('Canvas Error:', error, errorInfo)
   }
 
-  render() {
+  render(): React.ReactNode {
     if (this.state.hasError) {
       return (
         <div className="canvas-fallback">
           <div className="fallback-content">
-            <div className="fallback-icon">⚙️</div>
+            <div className="fallback-icon">🔬</div>
             <p>3D Model Loading...</p>
           </div>
         </div>
@@ -173,28 +199,29 @@ class CanvasErrorBoundary extends React.Component {
   }
 }
 
-const Hero = () => {
-  // Memoize static data to prevent re-creation
-  const services = useMemo(() => [
-    { number: '01.', service: 'Custom Brackets', icon: '⚡' },
-    { number: '02.', service: 'Steel Adapters', icon: '⚙️' },
-    { number: '03.', service: 'Motor Mounts', icon: '🔧' },
-    { number: '04.', service: 'Enclosures', icon: '📦' }
+// Main Hero Component
+const Hero: FC = () => {
+  // Updated services for Vignam's scientific simulation platform
+  const services = useMemo<ServiceItem[]>(() => [
+    { number: '01.', service: 'Physics Simulations', icon: '⚡' },
+    { number: '02.', service: 'Chemistry Models', icon: '🧪' },
+    { number: '03.', service: 'Biology Systems', icon: '🧬' },
+    { number: '04.', service: 'Interactive Learning', icon: '🎓' }
   ], [])
 
-  // Fixed working image URLs for CNC parts
-  const partImages = useMemo(() => [
+  // Updated images for scientific simulations
+  const partImages = useMemo<PartImage[]>(() => [
     {
-      src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=120&q=80",
-      alt: "CNC Part 1"
+      src: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=120&q=80",
+      alt: "Physics Simulation"
     },
     {
-      src: "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=100&q=80", 
-      alt: "CNC Part 2"
+      src: "https://images.unsplash.com/photo-1554475901-4538ddfbccc2?auto=format&fit=crop&w=100&q=80", 
+      alt: "Chemistry Lab"
     },
     {
-      src: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=100&q=80",
-      alt: "CNC Part 3"
+      src: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=100&q=80",
+      alt: "Biology Model"
     }
   ], [])
 
@@ -205,12 +232,12 @@ const Hero = () => {
           <div className="about-tag">• About •</div>
           <h1 className="hero-title">
             Revolutionizing<br />
-            Manufacturing with<br />
-            Speed and <span className="italic">Precision</span>
+            Scientific Learning with<br />
+            Interactive <span className="italic">Simulations</span>
           </h1>
           
           <div className="service-list">
-            {services.map((service, index) => (
+            {services.map((service: ServiceItem, index: number) => (
               <div key={index} className="service-item">
                 <span className="number">{service.number}</span>
                 <span className="service">{service.service}</span>
@@ -221,7 +248,7 @@ const Hero = () => {
 
           <div className="hero-parts">
             <div className="part-images">
-              {partImages.map((image, index) => (
+              {partImages.map((image: PartImage, index: number) => (
                 <div key={index} className="part-item">
                   <ImageWithFallback
                     src={image.src}
@@ -237,35 +264,35 @@ const Hero = () => {
         <div className="hero-right">
           <div className="profile">
             <ImageWithFallback
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=60&q=80"
-              alt="Ayrton Senna"
+              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&q=80"
+              alt="Dr. Sarah Chen"
               className="profile-img"
-              fallbackSrc="https://via.placeholder.com/60x60/667eea/white?text=AS"
+              fallbackSrc="https://via.placeholder.com/60x60/667eea/white?text=SC"
             />
             <div className="profile-info">
-              <h3>Ayrton Senna</h3>
-              <p>CEO & Senior Partner at Forge</p>
+              <h3>Dr. Sarah Chen</h3>
+              <p>Chief Scientific Officer at Vignam</p>
             </div>
           </div>
 
           <div className="description">
             <p>
-              At Forge, we believe that getting custom CNC parts should be fast, reliable, and effortless. That's why we built a fully streamlined platform that turns your CAD files into production-ready parts—delivered in as fast as one day. Whether you're prototyping or scaling, we remove the friction from manufacturing so you can focus on building what matters.
+              At Vignam, we believe that scientific learning should be interactive, engaging, and accessible to everyone. That's why we built a revolutionary platform that transforms complex scientific concepts into immersive simulations—delivered instantly through any web browser. Whether you're teaching physics, chemistry, or biology, we remove the barriers to understanding so you can focus on inspiring the next generation of scientists.
             </p>
             <p>
-              We operate high-performance CNC machines backed by in-house automation and a trusted network of suppliers. From one-off prototypes to small production runs, our system is built to deliver precise, high-quality parts with speed. You can also reserve your own dedicated CNC machine through our RM (Reserved Machines) offering—your own production line, without the overhead.
+              We develop cutting-edge simulation technology backed by advanced algorithms and a comprehensive library of scientific models. From basic physics demonstrations to complex molecular dynamics, our platform delivers accurate, real-time simulations with precision. You can also customize simulations to match your curriculum through our adaptive learning system—your own personalized teaching laboratory, without the equipment costs.
             </p>
           </div>
 
           <div className="quality-note">
-            <small>EVERY DETAIL MATTERS — WE CRAFT EACH PART WITH CARE, ACCURACY, AND A FINISH THAT FEELS JUST RIGHT</small>
+            <small>EVERY SIMULATION MATTERS — WE CRAFT EACH EXPERIENCE WITH SCIENTIFIC ACCURACY, EDUCATIONAL VALUE, AND INTERACTIVE ENGAGEMENT</small>
           </div>
 
           <div className="canvas-container">
             <CanvasErrorBoundary>
               <Canvas 
                 camera={{ position: [0, 0, 5], fov: 50 }}
-                onCreated={({ gl }) => {
+                onCreated={({ gl }: { gl: THREE.WebGLRenderer }) => {
                   gl.setClearColor('#f9fafb')
                 }}
               >
