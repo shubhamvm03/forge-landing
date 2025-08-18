@@ -51,22 +51,15 @@ const Loader = () => {
   )
 }
 
-// Enhanced Model Component (FIXED - no infinite re-renders)
+// Enhanced Model Component with Error Boundary Fallback
 const Model3D = () => {
   const meshRef = useRef()
   const [exrTexture, setExrTexture] = useState(null)
+  
+  // FIXED: Call useGLTF at top level - no try/catch around hooks
+  const gltf = useGLTF('/models/landing_page_motor.glb')
 
-  // Memoized GLB loading to prevent re-renders
-  const gltf = useMemo(() => {
-    try {
-      return useGLTF('/models/landing_page_motor.glb')
-    } catch (error) {
-      console.log('GLB Model failed to load:', error)
-      return null
-    }
-  }, [])
-
-  // Load EXR texture only once
+  // Load EXR texture
   useEffect(() => {
     const loader = new EXRLoader()
     loader.load(
@@ -81,7 +74,7 @@ const Model3D = () => {
         console.log('EXR texture failed to load:', error)
       }
     )
-  }, []) // Empty dependency array - runs only once
+  }, [])
 
   useFrame(() => {
     if (meshRef.current) {
@@ -89,7 +82,7 @@ const Model3D = () => {
     }
   })
 
-  // Apply EXR texture to materials (with proper dependencies)
+  // Apply EXR texture to materials
   useEffect(() => {
     if (exrTexture && gltf?.materials) {
       Object.values(gltf.materials).forEach((material) => {
@@ -101,14 +94,14 @@ const Model3D = () => {
         }
       })
     }
-  }, [exrTexture, gltf?.materials]) // Proper dependencies
+  }, [exrTexture, gltf?.materials])
 
   // If GLB model loaded successfully
   if (gltf?.scene) {
     return (
       <primitive 
         ref={meshRef} 
-        object={gltf.scene.clone()} // Clone to prevent shared reference issues
+        object={gltf.scene} 
         scale={[1.5, 1.5, 1.5]} 
         position={[0, 0, 0]} 
       />
@@ -149,6 +142,37 @@ const Model3D = () => {
   )
 }
 
+// Error Boundary for Canvas
+class CanvasErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.log('Canvas Error:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="canvas-fallback">
+          <div className="fallback-content">
+            <div className="fallback-icon">⚙️</div>
+            <p>3D Model Loading...</p>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
 const Hero = () => {
   // Memoize static data to prevent re-creation
   const services = useMemo(() => [
@@ -158,10 +182,10 @@ const Hero = () => {
     { number: '04.', service: 'Enclosures', icon: '📦' }
   ], [])
 
-  // Fixed image URLs with unique parts
+  // Fixed working image URLs for CNC parts
   const partImages = useMemo(() => [
     {
-      src: "https://picsum.photos/120/120?random=201",
+      src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=120&q=80",
       alt: "CNC Part 1"
     },
     {
@@ -238,26 +262,28 @@ const Hero = () => {
           </div>
 
           <div className="canvas-container">
-            <Canvas 
-              camera={{ position: [0, 0, 5], fov: 50 }}
-              onCreated={({ gl }) => {
-                gl.setClearColor('#f9fafb')
-              }}
-            >
-              <Suspense fallback={<Loader />}>
-                <ambientLight intensity={0.6} />
-                <pointLight position={[10, 10, 10]} intensity={0.5} />
-                <directionalLight position={[5, 5, 5]} intensity={0.4} />
-                <Model3D />
-                <OrbitControls 
-                  enableZoom={false} 
-                  enablePan={false}
-                  autoRotate
-                  autoRotateSpeed={1}
-                />
-                <Environment preset="studio" />
-              </Suspense>
-            </Canvas>
+            <CanvasErrorBoundary>
+              <Canvas 
+                camera={{ position: [0, 0, 5], fov: 50 }}
+                onCreated={({ gl }) => {
+                  gl.setClearColor('#f9fafb')
+                }}
+              >
+                <Suspense fallback={<Loader />}>
+                  <ambientLight intensity={0.6} />
+                  <pointLight position={[10, 10, 10]} intensity={0.5} />
+                  <directionalLight position={[5, 5, 5]} intensity={0.4} />
+                  <Model3D />
+                  <OrbitControls 
+                    enableZoom={false} 
+                    enablePan={false}
+                    autoRotate
+                    autoRotateSpeed={1}
+                  />
+                  <Environment preset="studio" />
+                </Suspense>
+              </Canvas>
+            </CanvasErrorBoundary>
           </div>
         </div>
       </div>
@@ -266,10 +292,6 @@ const Hero = () => {
 }
 
 // Preload the model outside the component to prevent re-loading
-try {
-  useGLTF.preload('/models/landing_page_motor.glb')
-} catch (error) {
-  console.log('Model preload failed:', error)
-}
+useGLTF.preload('/models/landing_page_motor.glb')
 
 export default Hero
